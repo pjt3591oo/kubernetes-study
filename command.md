@@ -1,3 +1,5 @@
+### deployment 
+
 * deployment 배포
 
 ```yaml
@@ -392,10 +394,123 @@ Commercial support is available at
 
 이제 해당 pod의 로그를 보면 접속 로그를 확인할 수 있다.
 
-```$ 
+```bash
 $ kubectl logs test-deployment-ff6768df4-h622p
 
 127.0.0.1 - - [16/Mar/2022:13:41:28 +0000] "GET / HTTP/1.1" 200 612 "-" "curl/7.64.1" "-"
 ```
 
 포트포워딩은 특정 pod으로만 접속을 허용한다. 만약 로드벨런싱 기능을 하기 위해선 서비스를 활용한다.
+
+### 서비스
+
+deployment는 replicaset을 통해 pod을 관리한다. deployment로 생성된 pod은 자체적으로 통신할 수단이 존재하지 않는다.
+
+서비스를 통해 deployment로 생성된 pod이 외부 서비스와 통신할 수 있도록 할 수 있다.
+
+* 서비스 정의
+
+서비스는 4개의 타입이 존재함
+
+  - ClusterIP
+  - NodePort
+  - LoadBalancer
+  - ExternalName
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-svc
+spec:
+  type: NodePort
+  selector:
+    app: test-deployment
+  ports:
+    - name: http
+      port: 8080
+      protocol: TCP
+      targetPort: 80  # pod에 실행중인 어플리케이션의 포트(nginx가 80포트로 running중)
+      nodePort: 31000
+    - name: https
+      port: 443
+      protocol: TCP
+      targetPort: 80 # pod에 실행중인 어플리케이션의 포트(nginx가 80포트로 running중)
+      nodePort: 31001
+```
+
+```bash
+$ kubectl apply test.service.yaml
+
+service/test-svc created
+```
+
+* IP 확인
+
+minikube에서 서비스 동작을 확인하기 위해 localhost:31000으로 요청
+
+```bash
+$ docker exec -it minikube /bin/bash
+
+$ curl localhost:31000
+
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome to nginx!</title>
+<style>
+    body {
+        width: 35em;
+        margin: 0 auto;
+        font-family: Tahoma, Verdana, Arial, sans-serif;
+    }
+</style>
+</head>
+<body>
+<h1>Welcome to nginx!</h1>
+<p>If you see this page, the nginx web server is successfully installed and
+working. Further configuration is required.</p>
+
+<p>For online documentation and support please refer to
+<a href="http://nginx.org/">nginx.org</a>.<br/>
+Commercial support is available at
+<a href="http://nginx.com/">nginx.com</a>.</p>
+
+<p><em>Thank you for using nginx.</em></p>
+</body>
+</html>
+```
+
+curl을 이용하여 여러번 요청해본다.
+
+* 로그확인
+
+```bash
+$  kubectl logs --namespace default -l app=test-deployment --timestamps=true --prefix=true --all-containers=true
+
+[pod/test-deployment-ff6768df4-8nsjv/test-deployment] 172.17.0.1 - - [18/Mar/2022:23:30:40 +0000] "GET / HTTP/1.1" 200 612 "-" "curl/7.68.0" "-"
+[pod/test-deployment-ff6768df4-8nsjv/test-deployment] 172.17.0.1 - - [18/Mar/2022:23:30:41 +0000] "GET / HTTP/1.1" 200 612 "-" "curl/7.68.0" "-"
+[pod/test-deployment-ff6768df4-8nsjv/test-deployment] 172.17.0.1 - - [18/Mar/2022:23:30:41 +0000] "GET / HTTP/1.1" 200 612 "-" "curl/7.68.0" "-"
+[pod/test-deployment-ff6768df4-8nsjv/test-deployment] 172.17.0.1 - - [18/Mar/2022:23:31:31 +0000] "GET / HTTP/1.1" 200 612 "-" "curl/7.68.0" "-"
+[pod/test-deployment-ff6768df4-8nsjv/test-deployment] 172.17.0.1 - - [18/Mar/2022:23:31:32 +0000] "GET / HTTP/1.1" 200 612 "-" "curl/7.68.0" "-"
+[pod/test-deployment-ff6768df4-hj77f/test-deployment] 172.17.0.1 - - [18/Mar/2022:23:31:29 +0000] "GET / HTTP/1.1" 200 612 "-" "curl/7.68.0" "-"
+[pod/test-deployment-ff6768df4-hj77f/test-deployment] 172.17.0.1 - - [18/Mar/2022:23:31:29 +0000] "GET / HTTP/1.1" 200 612 "-" "curl/7.68.0" "-"
+[pod/test-deployment-ff6768df4-hj77f/test-deployment] 172.17.0.1 - - [18/Mar/2022:23:31:30 +0000] "GET / HTTP/1.1" 200 612 "-" "curl/7.68.0" "-"
+[pod/test-deployment-ff6768df4-hj77f/test-deployment] 172.17.0.1 - - [18/Mar/2022:23:31:31 +0000] "GET / HTTP/1.1" 200 612 "-" "curl/7.68.0" "-"
+[pod/test-deployment-ff6768df4-hj77f/test-deployment] 172.17.0.1 - - [18/Mar/2022:23:31:31 +0000] "GET / HTTP/1.1" 200 612 "-" "curl/7.68.0" "-"
+[pod/test-deployment-ff6768df4-hj77f/test-deployment] 172.17.0.1 - - [18/Mar/2022:23:31:32 +0000] "GET / HTTP/1.1" 200 612 "-" "curl/7.68.0" "-"
+[pod/test-deployment-ff6768df4-hj77f/test-deployment] 172.17.0.1 - - [18/Mar/2022:23:33:06 +0000] "GET / HTTP/1.1" 200 612 "-" "curl/7.68.0" "-"
+[pod/test-deployment-ff6768df4-hj77f/test-deployment] 172.17.0.1 - - [18/Mar/2022:23:33:07 +0000] "GET / HTTP/1.1" 200 612 "-" "curl/7.68.0" "-"
+[pod/test-deployment-ff6768df4-hj77f/test-deployment] 172.17.0.1 - - [18/Mar/2022:23:33:07 +0000] "GET / HTTP/1.1" 200 612 "-" "curl/7.68.0" "-"
+[pod/test-deployment-ff6768df4-hj77f/test-deployment] 172.17.0.1 - - [18/Mar/2022:23:33:08 +0000] "GET / HTTP/1.1" 200 612 "-" "curl/7.68.0" "-"
+[pod/test-deployment-ff6768df4-xrpl9/test-deployment] 172.17.0.1 - - [18/Mar/2022:23:30:38 +0000] "GET / HTTP/1.1" 200 612 "-" "curl/7.68.0" "-"
+[pod/test-deployment-ff6768df4-xrpl9/test-deployment] 172.17.0.1 - - [18/Mar/2022:23:30:39 +0000] "GET / HTTP/1.1" 200 612 "-" "curl/7.68.0" "-"
+[pod/test-deployment-ff6768df4-xrpl9/test-deployment] 172.17.0.1 - - [18/Mar/2022:23:30:41 +0000] "GET / HTTP/1.1" 200 612 "-" "curl/7.68.0" "-"
+[pod/test-deployment-ff6768df4-xrpl9/test-deployment] 172.17.0.1 - - [18/Mar/2022:23:31:32 +0000] "GET / HTTP/1.1" 200 612 "-" "curl/7.68.0" "-"
+[pod/test-deployment-ff6768df4-xrpl9/test-deployment] 172.17.0.1 - - [18/Mar/2022:23:31:32 +0000] "GET / HTTP/1.1" 200 612 "-" "curl/7.68.0" "-"
+[pod/test-deployment-ff6768df4-xrpl9/test-deployment] 172.17.0.1 - - [18/Mar/2022:23:31:32 +0000] "GET / HTTP/1.1" 200 612 "-" "curl/7.68.0" "-"
+[pod/test-deployment-ff6768df4-xrpl9/test-deployment] 172.17.0.1 - - [18/Mar/2022:23:33:06 +0000] "GET / HTTP/1.1" 200 612 "-" "curl/7.68.0" "-"
+```
+
+서비스에 의해 적절히 로드벨런싱이 이루어진 모습을 확인할 수 있다.
+
