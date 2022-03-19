@@ -196,7 +196,7 @@ REVISION  CHANGE-CAUSE
 2         <none>
 ```
 
-rollout history에서 CHANGE_CAUSE가 <none>이 나온 이유는 .yaml에 metadata.annotations에 kubernetes.io/change-cause: [기록할 단어]를 입력하면 된다. 일반적으로 버전을 입력하면 좋을 것 같다.
+rollout history에서 CHANGE_CAUSE가 \<none\>이 나온 이유는 .yaml에 metadata.annotations에 kubernetes.io/change-cause: [기록할 단어]를 입력하면 된다. 일반적으로 버전을 입력하면 좋을 것 같다.
 
 * replicaset 조회
 
@@ -532,36 +532,6 @@ minikube는 다음 명령어로 nginx ingress controller를 활성화할 수 있
 $ minikube addons enable ingress
 ```
 
-* 인그레스 컨트롤러 확인
-
-```bash
-$ kubectl -n ingress-nginx get pod
-
-NAME                                        READY   STATUS      RESTARTS   AGE
-ingress-nginx-admission-create-8ljk5        0/1     Completed   0          23m
-ingress-nginx-admission-patch-n6cbj         0/1     Completed   0          23m
-ingress-nginx-controller-5fc9586f46-wrsg7   1/1     Running     0          23m
-```
-
-```bash
-$ kubectl get svc -n ingress-nginx
-
-NAME                                 TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)                      AGE
-ingress-nginx-controller             NodePort    10.107.8.147    <none>        80:31922/TCP,443:30248/TCP   23m
-ingress-nginx-controller-admission   ClusterIP   10.109.78.124   <none>        443/TCP                      23m
-```
-
-```bash
-$ minikube ssh # docker exec -it minikube
-
-docker@minikube:~$ curl -I http://localhost/healthz
-HTTP/1.1 200 OK
-Date: Sat, 19 Mar 2022 00:39:22 GMT
-Content-Type: text/html
-Content-Length: 0
-Connection: keep-alive
-```
-
 ```bash
 $ minukube addons list
 
@@ -600,6 +570,38 @@ $ minukube addons list
 | storage-provisioner-gluster | minikube | disabled     | unknown (third-party)          |
 | volumesnapshots             | minikube | disabled     | kubernetes                     |
 |-----------------------------|----------|--------------|--------------------------------|
+```
+
+* 인그레스 컨트롤러 확인
+
+```bash
+$ kubectl -n ingress-nginx get pod
+
+NAME                                        READY   STATUS      RESTARTS   AGE
+ingress-nginx-admission-create-8ljk5        0/1     Completed   0          23m
+ingress-nginx-admission-patch-n6cbj         0/1     Completed   0          23m
+ingress-nginx-controller-5fc9586f46-wrsg7   1/1     Running     0          23m
+```
+
+* 인그레스 서비스 확인
+
+```bash
+$ kubectl get svc -n ingress-nginx
+
+NAME                                 TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)                      AGE
+ingress-nginx-controller             NodePort    10.107.8.147    <none>        80:31922/TCP,443:30248/TCP   23m
+ingress-nginx-controller-admission   ClusterIP   10.109.78.124   <none>        443/TCP                      23m
+```
+
+```bash
+$ minikube ssh # docker exec -it minikube
+
+docker@minikube:~$ curl -I http://localhost/healthz
+HTTP/1.1 200 OK
+Date: Sat, 19 Mar 2022 00:39:22 GMT
+Content-Type: text/html
+Content-Length: 0
+Connection: keep-alive
 ```
 
 * 인그레스 정의
