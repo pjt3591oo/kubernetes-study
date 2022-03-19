@@ -1,0 +1,17 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: my-ingress
+  # namespace: namespace
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    kubernetes.io/ingress.class: nginx
+spec:
+  rules:
+  # - host: mung.com # host를 명시하지 않으면 IPfh 연결
+  - http:
+      paths:
+      - path: /
+        backend:
+          serviceName: test-svc
+          servicePort: 8080

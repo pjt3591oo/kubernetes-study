@@ -449,10 +449,14 @@ service/test-svc created
 
 minikube에서 서비스 동작을 확인하기 위해 localhost:31000으로 요청
 
-```bash
-$ docker exec -it minikube /bin/bash
+```
+$ minikube ip
+```
 
-$ curl localhost:31000
+```bash
+$ minikube ssh # docker exec -it minikube
+
+docker@minikube:~$ curl localhost:31000
 
 <!DOCTYPE html>
 <html>
@@ -514,3 +518,211 @@ $  kubectl logs --namespace default -l app=test-deployment --timestamps=true --p
 
 서비스에 의해 적절히 로드벨런싱이 이루어진 모습을 확인할 수 있다.
 
+### 인그레스(ingress)
+
+서비스는 팟과 통신하기 위한 방법을 정의하는 반면에 인그레스는 클러스터 외부에서 내부로 접근하는 방법을 정의합니다.
+
+인그레스를 사용하기 위해 ingress, ingress-controller, ingress-nginx 적용 필요
+
+* 인그레스 활성화
+
+minikube는 다음 명령어로 nginx ingress controller를 활성화할 수 있다.
+
+```bash
+$ minikube addons enable ingress
+```
+
+* 인그레스 컨트롤러 확인
+
+```bash
+$ kubectl -n ingress-nginx get pod
+
+NAME                                        READY   STATUS      RESTARTS   AGE
+ingress-nginx-admission-create-8ljk5        0/1     Completed   0          23m
+ingress-nginx-admission-patch-n6cbj         0/1     Completed   0          23m
+ingress-nginx-controller-5fc9586f46-wrsg7   1/1     Running     0          23m
+```
+
+```bash
+$ kubectl get svc -n ingress-nginx
+
+NAME                                 TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)                      AGE
+ingress-nginx-controller             NodePort    10.107.8.147    <none>        80:31922/TCP,443:30248/TCP   23m
+ingress-nginx-controller-admission   ClusterIP   10.109.78.124   <none>        443/TCP                      23m
+```
+
+```bash
+$ minikube ssh # docker exec -it minikube
+
+docker@minikube:~$ curl -I http://localhost/healthz
+HTTP/1.1 200 OK
+Date: Sat, 19 Mar 2022 00:39:22 GMT
+Content-Type: text/html
+Content-Length: 0
+Connection: keep-alive
+```
+
+```bash
+$ minukube addons list
+
+|-----------------------------|----------|--------------|--------------------------------|
+|         ADDON NAME          | PROFILE  |    STATUS    |           MAINTAINER           |
+|-----------------------------|----------|--------------|--------------------------------|
+| ambassador                  | minikube | disabled     | third-party (ambassador)       |
+| auto-pause                  | minikube | disabled     | google                         |
+| csi-hostpath-driver         | minikube | disabled     | kubernetes                     |
+| dashboard                   | minikube | disabled     | kubernetes                     |
+| default-storageclass        | minikube | enabled ✅   | kubernetes                     |
+| efk                         | minikube | disabled     | third-party (elastic)          |
+| freshpod                    | minikube | disabled     | google                         |
+| gcp-auth                    | minikube | disabled     | google                         |
+| gvisor                      | minikube | disabled     | google                         |
+| helm-tiller                 | minikube | disabled     | third-party (helm)             |
+| ingress                     | minikube | enabled ✅   | unknown (third-party)          |
+| ingress-dns                 | minikube | disabled     | google                         |
+| istio                       | minikube | disabled     | third-party (istio)            |
+| istio-provisioner           | minikube | disabled     | third-party (istio)            |
+| kong                        | minikube | disabled     | third-party (Kong HQ)          |
+| kubevirt                    | minikube | disabled     | third-party (kubevirt)         |
+| logviewer                   | minikube | disabled     | unknown (third-party)          |
+| metallb                     | minikube | disabled     | third-party (metallb)          |
+| metrics-server              | minikube | disabled     | kubernetes                     |
+| nvidia-driver-installer     | minikube | disabled     | google                         |
+| nvidia-gpu-device-plugin    | minikube | disabled     | third-party (nvidia)           |
+| olm                         | minikube | disabled     | third-party (operator          |
+|                             |          |              | framework)                     |
+| pod-security-policy         | minikube | disabled     | unknown (third-party)          |
+| portainer                   | minikube | disabled     | portainer.io                   |
+| registry                    | minikube | disabled     | google                         |
+| registry-aliases            | minikube | disabled     | unknown (third-party)          |
+| registry-creds              | minikube | disabled     | third-party (upmc enterprises) |
+| storage-provisioner         | minikube | enabled ✅   | google                         |
+| storage-provisioner-gluster | minikube | disabled     | unknown (third-party)          |
+| volumesnapshots             | minikube | disabled     | kubernetes                     |
+|-----------------------------|----------|--------------|--------------------------------|
+```
+
+* 인그레스 정의
+
+```yaml
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: my-ingress
+  # namespace: namespace
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    kubernetes.io/ingress.class: nginx
+spec:
+  rules:
+  # - host: mung.com # host를 명시하지 않으면 IPfh 연결
+  - http:
+      paths:
+      - path: /
+        backend:
+          serviceName: test-svc
+          servicePort: 8080
+```
+
+/으로 요청이 들어오면 test-svc로 정의된 서비스의 8080포트로 연결해준다.
+
+```bash
+$ kubectl apply -f test.ingress.yaml
+
+ingress.extensions/my-ingress created
+```
+
+```bash
+$ kubectl get ingress
+
+NAME         CLASS    HOSTS   ADDRESS        PORTS   AGE
+my-ingress   <none>   *       192.168.49.2   80      2m23s
+```
+
+address가 표시되는데 1~2분 정도 소요될 수 있다. 또한 ingress는 외부에서 접속하는 목적을 가지기 때문에 ADDRESS는 해당 노드의 아이피로 바인딩 된다.
+
+```bash
+$ kubectl get endpoints
+
+NAME         ENDPOINTS                                               AGE
+kubernetes   192.168.49.2:8443                                       25m
+test-svc     172.17.0.4:80,172.17.0.5:80,172.17.0.6:80 + 3 more...   20m
+```
+
+여기서 kubernetes는 도커 기반으로 생성된 minikube에게 할당된 아이피이다.
+
+```bash
+$ minikube profile list
+
+|----------|-----------|---------|--------------|------|---------|---------|-------|
+| Profile  | VM Driver | Runtime |      IP      | Port | Version | Status  | Nodes |
+|----------|-----------|---------|--------------|------|---------|---------|-------|
+| minikube | docker    | docker  | 192.168.49.2 | 8443 | v1.21.7 | Running |     1 |
+|----------|-----------|---------|--------------|------|---------|---------|-------|
+```
+
+```bash
+$ minikube ssh # docker exec -it minikube
+
+docker@minikube:~$ curl localhost
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome to nginx!</title>
+<style>
+    body {
+        width: 35em;
+        margin: 0 auto;
+        font-family: Tahoma, Verdana, Arial, sans-serif;
+    }
+</style>
+</head>
+<body>
+<h1>Welcome to nginx!</h1>
+<p>If you see this page, the nginx web server is successfully installed and
+working. Further configuration is required.</p>
+
+<p>For online documentation and support please refer to
+<a href="http://nginx.org/">nginx.org</a>.<br/>
+Commercial support is available at
+<a href="http://nginx.com/">nginx.com</a>.</p>
+
+<p><em>Thank you for using nginx.</em></p>
+</body>
+</html>
+```
+
+### 터널링
+
+```bash
+$ minikube ip
+```
+
+```bash
+$ minikube ssh # docker exec -it minikube
+```
+
+기본적으로 도커 컨테이너로 생성된 minikube가 쿠버네티스의 마스터 노드로 작동하기 때문에 ingress, service를 사용하더라도 해당 노드에 접속한 후 설정된 아이피로 접속을 수행하였다.
+
+만약, 해당 컨테이너(노드)에 접속하지 않고 인그레스로 설정된 아이피:포트로 접속하고 싶다면 터널링을 사용한다.
+
+```bash
+$ minikube tunnel
+
+✅  Tunnel successfully started
+
+📌  NOTE: Please do not close this terminal as this process must stay alive for the tunnel to be accessible ...
+
+❗  The service/ingress my-ingress requires privileged ports to be exposed: [80 443]
+🔑  sudo permission will be asked for it.
+🏃  my-ingress 서비스의 터널을 시작하는 중
+Password:
+```
+
+비밀번호를 입력하면 터널링이 동작한다. 이제 minikube ssh가 아닌 호스트에서 localhost로 접속하면 인그레스 - 서비스 - 팟에 접속할 수 있다. 터널링은 80, 443을 사용할 수 있다.
+
+```bash
+$ curl localhost
+```
+
+또는 크롬과 같은 브라우저를 통해 접속해보자.
