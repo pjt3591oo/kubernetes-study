@@ -64,6 +64,19 @@
 
 * 잡(Job): 
 
-### 터미널 사용법
+### tutorial
 
 [여기에 있어요~](./command.md)
+
+### issue
+
+* ErrImagePull
+
+```
+7m48s       Warning   Failed     pod/react-nginx   Failed to pull image "react/nginx:0.1": rpc error: code = Unknown desc = Error response from daemon: pull access denied for react/nginx, repository does not exist or may require 'docker login': denied: requested access to the resource is denied
+7m48s       Warning   Failed     pod/react-nginx   Error: ErrImagePull
+4m16s       Normal    BackOff    pod/react-nginx   Back-off pulling image "react/nginx:0.1"
+7m23s       Warning   Failed     pod/react-nginx   Error: ImagePullBackOff
+```
+
+[여기에 있어요~](./issue.md)
